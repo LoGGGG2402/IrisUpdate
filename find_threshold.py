@@ -79,17 +79,19 @@ def find_hamming_distance(iris_code):
     print(max_workers)
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         results = []
-        for i in range(len(iris_code)):
-            for j in range(i + 1, len(iris_code)):
+        for i in range(len(iris_code) - 1):
+            for j in range(i + 1, len(iris_code)-1):
                 results.append(executor.submit(calculate_distance, (i, j, iris_code)))
 
+        results1 = []
+
         for result in concurrent.futures.as_completed(results):
-            percentage = (i / total_tasks * 100)
+            percentage = (len(results1) / total_tasks) * 100
             print(f"\rProgress: {percentage:.2f}%   " + result.result().__str__(), end='', flush=True)
-            results.append(result.result())
+            results1.append(result.result())
 
     # Update distance array with results
-    for result in results:
+    for result in results1:
         i, j, match, dis = result
         distances[i][j] = (match, dis)
         distances[j][i] = (match, dis)
@@ -97,13 +99,12 @@ def find_hamming_distance(iris_code):
     print('\nHamming distance')
     with open('distance.pkl', 'wb') as file:
         pickle.dump(distances, file)
-
     return distances
 
 
 def security_level(args):
-    distances, threshold = args
     """Returns the security level of the threshold."""
+    distances, threshold = args
     acceptance = 0
     rejection = 0
     false_acceptance = 0
@@ -111,7 +112,9 @@ def security_level(args):
     for i in range(len(distances) - 1):
         for j in range(i + 1, len(distances[i])):
             h_distance = distances[i][j]
-            match = (h_distance[1] < threshold)
+            if h_distance is None:
+                continue
+            match = h_distance[1] <= threshold
             true_match = h_distance[0]
             if true_match:
                 if match:
@@ -140,9 +143,8 @@ def find_threshold(model='read', from_x=1, to_x=1000):
     frr = []
     # threshold = 0.001 - 1
     threshold = [i / to_x for i in range(from_x, to_x)]
-    with open('far_frr.txt', 'w') as g:
-        max_workers = os.cpu_count() or 1
-        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count() or 1) as executor:
+        with open('far_frr.txt', 'w') as g:
             results = []
             for i in threshold:
                 results.append(executor.submit(security_level, (distances, i)))
@@ -151,7 +153,8 @@ def find_threshold(model='read', from_x=1, to_x=1000):
                 far_i, frr_i, threshold = result.result()
                 far.append(far_i)
                 frr.append(frr_i)
-                g.write(str(far_i) + " " + str(frr_i) + " " + str(threshold) + "\n")
+                g.write(far_i.__str__() + " " + frr_i.__str__() + " " + threshold.__str__() + "\n")
+
     min_far = min(far)
     min_frr = min(frr)
     index_far = far.index(min_far)
