@@ -3,7 +3,7 @@ import os
 import matplotlib.pyplot as plt
 
 from feature_extraction import encode_iris
-from matching import matching
+from matching import matching, hamming_distance
 
 
 def read_file():
@@ -62,13 +62,25 @@ def read_iris_code():
     return iris_code
 
 
-def security_level(iris_code, threshold):
+def find_hamming_distance(iris_code):
+    distance = []
+    for i in range(len(iris_code)-1):
+        row = []
+        for j in range(len(iris_code)-1):
+            match1 = (iris_code[i][0] == iris_code[j][0])
+            dis1 = hamming_distance(iris_code[i][1], iris_code[j][1])
+            row.append((match1, dis1))
+        distance.append(row)
+    return distance
+
+
+def security_level(distance, threshold):
     """Returns the security level of the threshold."""
     acceptance = 0
     rejection = 0
     false_acceptance = 0
     false_rejection = 0
-    for i in range(len(iris_code) - 1):
+    for i in range(len(distance) - 1):
         for j in range(i + 1, len(iris_code)):
             match, confidence = matching(iris_code[i][1], iris_code[j][1], threshold)
             if iris_code[i][0] == iris_code[j][0]:
@@ -84,6 +96,9 @@ def security_level(iris_code, threshold):
     far = false_acceptance / (false_acceptance + acceptance)
     frr = false_rejection / (false_rejection + rejection)
     return far, frr
+
+
+
 
 
 def find_threshold(model='get', from_x=1, to_x=1000):
