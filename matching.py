@@ -1,5 +1,4 @@
 import sys
-from feature_extraction import *
 
 
 def shift(lst, n):

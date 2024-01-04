@@ -1,6 +1,7 @@
 import os
 
 import matplotlib.pyplot as plt
+
 from feature_extraction import encode_iris
 from matching import matching
 
@@ -43,6 +44,24 @@ def get_iris_code():
     return iris_codes
 
 
+def read_iris_code():
+    """Reads the iris code from the file."""
+    iris_code = []
+    with open('iris_code.txt', 'r') as f:
+        for line in f:
+            line = line.split(": ")
+            name = line[0]
+            code = line[1]
+            code = code[2:-3]
+            code = code.split('], [')
+            code = [[int(i) for i in j.split(', ')] for j in code]
+            iris_code.append((name, code))
+    with open('iris_code1.txt', 'w') as f:
+        for i in iris_code:
+            f.write(i[0] + ": " + str(i[1]) + "\n")
+    return iris_code
+
+
 def security_level(iris_code, threshold):
     """Returns the security level of the threshold."""
     acceptance = 0
@@ -67,12 +86,15 @@ def security_level(iris_code, threshold):
     return far, frr
 
 
-def find_threshold():
+def find_threshold(model='get'):
     """Returns the threshold that gives the best security level."""
-    iris_code = get_iris_code()
+    if model == 'read':
+        iris_code = read_iris_code()
+    else:
+        iris_code = get_iris_code()
     far = []
     frr = []
-    # threshold = 0.1 -> 100
+    # threshold = 0.001 - 1
     number_of_thresholds = 1000
     threshold = [i / number_of_thresholds for i in range(number_of_thresholds)]
     for i in threshold:
@@ -136,9 +158,8 @@ def draw_far_frr_from_file():
 
 
 def main():
-    # write_result()
+    write_result()
     # draw_far_frr_from_file()
-    get_iris_code()
 
 
 if __name__ == '__main__':
