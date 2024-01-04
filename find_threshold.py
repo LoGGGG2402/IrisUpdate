@@ -1,9 +1,11 @@
+import concurrent.futures
 import os
+import pickle
 
 import matplotlib.pyplot as plt
 
 from feature_extraction import encode_iris
-from matching import matching, hamming_distance
+from matching import hamming_distance
 
 
 def read_file():
@@ -62,28 +64,56 @@ def read_iris_code():
     return iris_code
 
 
+def calculate_distance(args):
+    i, j, iris_code = args
+    match1 = (iris_code[i][0] == iris_code[j][0])
+    dis1 = hamming_distance(iris_code[i][1], iris_code[j][1])
+    return i, j, match1, dis1
+
+
 def find_hamming_distance(iris_code):
-    distance = []
-    for i in range(len(iris_code)-1):
-        row = []
-        for j in range(len(iris_code)-1):
-            match1 = (iris_code[i][0] == iris_code[j][0])
-            dis1 = hamming_distance(iris_code[i][1], iris_code[j][1])
-            row.append((match1, dis1))
-        distance.append(row)
-    return distance
+    distances = [[None] * len(iris_code) for _ in range(len(iris_code))]
+
+    total_tasks = len(iris_code) * (len(iris_code) - 1) // 2  # Total number of tasks
+    max_workers = os.cpu_count() or 1
+    print(max_workers)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        results = []
+        for i in range(len(iris_code)):
+            for j in range(i + 1, len(iris_code)):
+                results.append(executor.submit(calculate_distance, (i, j, iris_code)))
+
+        for result in concurrent.futures.as_completed(results):
+            percentage = (i / total_tasks * 100)
+            print(f"\rProgress: {percentage:.2f}%   " + result.result().__str__(), end='', flush=True)
+            results.append(result.result())
+
+    # Update distance array with results
+    for result in results:
+        i, j, match, dis = result
+        distances[i][j] = (match, dis)
+        distances[j][i] = (match, dis)
+
+    print('\nHamming distance')
+    with open('distance.pkl', 'wb') as file:
+        pickle.dump(distances, file)
+
+    return distances
 
 
-def security_level(distance, threshold):
+def security_level(args):
+    distances, threshold = args
     """Returns the security level of the threshold."""
     acceptance = 0
     rejection = 0
     false_acceptance = 0
     false_rejection = 0
-    for i in range(len(distance) - 1):
-        for j in range(i + 1, len(iris_code)):
-            match, confidence = matching(iris_code[i][1], iris_code[j][1], threshold)
-            if iris_code[i][0] == iris_code[j][0]:
+    for i in range(len(distances) - 1):
+        for j in range(i + 1, len(distances[i])):
+            h_distance = distances[i][j]
+            match = (h_distance[1] < threshold)
+            true_match = h_distance[0]
+            if true_match:
                 if match:
                     acceptance += 1
                 else:
@@ -95,30 +125,33 @@ def security_level(distance, threshold):
                     rejection += 1
     far = false_acceptance / (false_acceptance + acceptance)
     frr = false_rejection / (false_rejection + rejection)
-    return far, frr
+    return far, frr, threshold
 
 
-
-
-
-def find_threshold(model='get', from_x=1, to_x=1000):
+def find_threshold(model='read', from_x=1, to_x=1000):
     """Returns the threshold that gives the best security level."""
     if model == 'read':
         iris_code = read_iris_code()
     else:
         iris_code = get_iris_code()
+
+    distances = find_hamming_distance(iris_code)
     far = []
     frr = []
     # threshold = 0.001 - 1
     threshold = [i / to_x for i in range(from_x, to_x)]
-    with open('threshold.txt', 'w') as f:
-        with open('far_frr.txt', 'w') as g:
+    with open('far_frr.txt', 'w') as g:
+        max_workers = os.cpu_count() or 1
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            results = []
             for i in threshold:
-                far_i, frr_i = security_level(iris_code, i)
+                results.append(executor.submit(security_level, (distances, i)))
+
+            for result in concurrent.futures.as_completed(results):
+                far_i, frr_i, threshold = result.result()
                 far.append(far_i)
                 frr.append(frr_i)
-                f.write(str(i) + "\n")
-                g.write(str(far_i) + " " + str(frr_i) + "\n")
+                g.write(str(far_i) + " " + str(frr_i) + " " + str(threshold) + "\n")
     min_far = min(far)
     min_frr = min(frr)
     index_far = far.index(min_far)
