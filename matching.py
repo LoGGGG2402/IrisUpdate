@@ -19,12 +19,11 @@ def hamming_distance(iris_code1, iris_code2):
         for j in range(len(iris_code1)):
             s += xor(iris_code1[j], shift(iris_code2[j], i))
         min_dist = min(min_dist, s)
-    return min_dist
+    return min_dist / (len(iris_code1) * len(iris_code1[0]))
 
 
 def matching(iris_code1, iris_code2, threshold=0.32):
     res = hamming_distance(iris_code1, iris_code2)
-    res /= (len(iris_code1) * len(iris_code1[0]))
     print(res)
     if res <= threshold:
         return True, 1 - res
