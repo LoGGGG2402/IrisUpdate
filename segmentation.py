@@ -8,12 +8,10 @@ def iris_segmentation(img=None, img_path=None):
         img = cv2.imread(img_path)
     pupil = find_pupil(img)
     if pupil is None:
-        print("no pupil")
         return None
     else:
         iris = find_iris(img, pupil)
         if iris is None:
-            print("no iris")
             return None
 
     return img, (pupil[0], pupil[1]), pupil[2], (iris[0], iris[1]), iris[2]
@@ -24,7 +22,7 @@ def find_pupil(img):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     # Remove noise by blurring the image
     img = cv2.medianBlur(img, 9)
-    # Increase the constrast
+    # Increase the contrast
     img = cv2.convertScaleAbs(img, alpha=1.1, beta=10)
 
     circles = cv2.HoughCircles(img, method=cv2.HOUGH_GRADIENT, dp=1, minDist=50, param1=100, param2=30, minRadius=5,
@@ -55,17 +53,15 @@ def find_iris(img, inner_circle):
                                minRadius=round(inner_circle[2] * 1.6), maxRadius=round(inner_circle[2] * 2.7))
 
     if circles is not None:
-        print("circles")
         circles = np.uint16(np.around(circles))
         # Find the circle that neighbours the inner circle
 
-        neyghbours = [x for x in circles[0, :] if
+        neighbours = [x for x in circles[0, :] if
                       distance.euclidean((x[0], x[1]), (inner_circle[0], inner_circle[1])) < 4]
-        if len(neyghbours) == 0:
+        if len(neighbours) == 0:
             return None
-        max_circle = max(neyghbours, key=lambda x: x[2])
+        max_circle = max(neighbours, key=lambda x: x[2])
         return max_circle
 
     else:
-        print("no circles")
         return None

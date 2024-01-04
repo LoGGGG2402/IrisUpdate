@@ -8,7 +8,7 @@ from matching import matching
 def read_file():
     """Reads the file and returns a list of the lines in the file."""
     root = 'database'
-    folders = os.listdir(root)
+    folders = [folder for folder in os.listdir(root) if os.path.isdir(os.path.join(root, folder))]
     files = []
 
     for folder in folders:
@@ -22,6 +22,7 @@ def read_file():
         for file in right_files:
             name = folder + "right"
             files.append((name, file))
+    print('Read file map successfully.')
     return files
 
 
@@ -33,6 +34,7 @@ def get_iris_code():
         code = encode_iris(file[1])
         if code is not None:
             iris_codes.append((file[0], code))
+            print('\r', (len(iris_codes) / len(files) * 100).__str__() + '% of codes are extracted.', end='')
 
     # write the iris code to a file
     with open('iris_code.txt', 'w') as f:
@@ -134,8 +136,9 @@ def draw_far_frr_from_file():
 
 
 def main():
-    write_result()
-    draw_far_frr_from_file()
+    # write_result()
+    # draw_far_frr_from_file()
+    get_iris_code()
 
 
 if __name__ == '__main__':
