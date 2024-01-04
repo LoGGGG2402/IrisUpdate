@@ -86,7 +86,7 @@ def security_level(iris_code, threshold):
     return far, frr
 
 
-def find_threshold(model='get'):
+def find_threshold(model='get', from_x=1, to_x=1000):
     """Returns the threshold that gives the best security level."""
     if model == 'read':
         iris_code = read_iris_code()
@@ -95,12 +95,15 @@ def find_threshold(model='get'):
     far = []
     frr = []
     # threshold = 0.001 - 1
-    number_of_thresholds = 1000
-    threshold = [i / number_of_thresholds for i in range(number_of_thresholds)]
-    for i in threshold:
-        far_i, frr_i = security_level(iris_code, i)
-        far.append(far_i)
-        frr.append(frr_i)
+    threshold = [i / to_x for i in range(from_x, to_x)]
+    with open('threshold.txt', 'w') as f:
+        with open('far_frr.txt', 'w') as g:
+            for i in threshold:
+                far_i, frr_i = security_level(iris_code, i)
+                far.append(far_i)
+                frr.append(frr_i)
+                f.write(str(i) + "\n")
+                g.write(str(far_i) + " " + str(frr_i) + "\n")
     min_far = min(far)
     min_frr = min(frr)
     index_far = far.index(min_far)
